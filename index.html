@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Joez Asynchronous Content Panel Loader</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <style>
+        #content-panel {
+            border: 1px solid #ccc;
+            padding: 20px;
+            min-height: 100px;
+            margin-top: 10px;
+        }
+        #region-nav {
+            margin-bottom: 10px;
+        }
+        #region-nav ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+        }
+        #region-nav li {
+            margin-right: 10px;
+        }
+        #region-nav a {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        #region-nav a:hover {
+            background-color: #0056b3;
+        }
+        #region-nav li.active {
+            background-color: #003087;
+            border-radius: 4px;
+        }
+        #region-nav li.active a {
+            background-color: transparent;
+        }
+    </style>
+</head>
+<body>
+    <nav id="region-nav">
+        <ul>
+            <li><a href="?page=content" onclick="handleLinkClick(event, this)">Load Content</a></li>
+            <li><a href="?page=other" onclick="handleLinkClick(event, this)">Load Other</a></li>
+        </ul>
+    </nav>
+    <div id="content-panel">Content will load here...</div>
+
+    <script>
+        const loadingMessage = '<div class="spinner-border" style="width: 3rem; height: 3rem;" role="status"><span class="sr-only"></span></div>';
+        const failedMessage = 'Failed to load content: ';
+        const networkErrorMessage = 'Network response failed.';
+        const contentDivId = 'content-panel';
+        const errorMessage = 'Error loading content: ';
+        const navContainer = 'region-nav';
+
+        function handleLinkClick(event, link) {
+            event.preventDefault();
+            const page = new URL(link.href).searchParams.get('page');
+            // Remove 'active' class from all nav <li> elements
+            document.querySelectorAll('#' + navContainer + ' li').forEach(li => li.classList.remove('active'));
+            // Add 'active' class to the parent <li> of the clicked link
+            link.parentElement.classList.add('active');
+            // Load content
+            loadContent(page ? 'part-' + page + '.php' : 'part-default.php', contentDivId, page ? link.search : '?page=default');
+        }
+
+        async function loadContent(destinationPage, targetDivId, newQueryString) {
+            // Show loading spinner before fetching
+            document.getElementById(targetDivId).innerHTML = loadingMessage;
+            try {
+                const response = await fetch(destinationPage);
+                if (!response.ok) {
+                    throw new Error(networkErrorMessage);
+                }
+                const htmlContent = await response.text();
+                document.getElementById(targetDivId).innerHTML = htmlContent;
+                // Update the URL using History API
+                if (newQueryString) {
+                    history.pushState({ page: destinationPage }, '', newQueryString);
+                }
+            } catch (error) {
+                console.error(errorMessage, error);
+                document.getElementById(targetDivId).innerHTML = failedMessage + error.message;
+            }
+        }
+
+        // Handle initial page load and direct URL navigation
+        document.addEventListener('DOMContentLoaded', function() {
+            const params = new URLSearchParams(window.location.search);
+            const page = params.get('page');
+            // Update active class based on URL
+            document.querySelectorAll('#' + navContainer + ' a').forEach(a => {
+                const linkPage = new URL(a.href).searchParams.get('page');
+                a.parentElement.classList.toggle('active', linkPage === page || (!page && linkPage === 'default'));
+            });
+            // Load content
+            if (page) {
+                loadContent('part-' + page + '.php', contentDivId, '?page=' + page);
+            } else {
+                loadContent('part-default.php', contentDivId, '?page=default');
+            }
+        });
+
+        // Handle back/forward navigation
+        window.addEventListener('popstate', function(event) {
+            const params = new URLSearchParams(window.location.search);
+            const page = params.get('page');
+            // Update active class based on URL
+            document.querySelectorAll('#' + navContainer + ' a').forEach(a => {
+                const linkPage = new URL(a.href).searchParams.get('page');
+                a.parentElement.classList.toggle('active', linkPage === page || (!page && linkPage === 'default'));
+            });
+            // Load content
+            if (page) {
+                loadContent('part-' + page + '.php', contentDivId, '?page=' + page);
+            } else {
+                loadContent('part-default.php', contentDivId, '?page=default');
+            }
+        });
+    </script>
+</body>
+</html>
