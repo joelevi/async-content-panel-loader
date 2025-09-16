@@ -54,78 +54,91 @@
     </nav>
     <div id="content-panel">Content will load here...</div>
 
-    <script>
-        const loadingMessage = '<div class="spinner-border" style="width: 3rem; height: 3rem;" role="status"><span class="sr-only"></span></div>';
-        const failedMessage = 'Failed to load content: ';
-        const networkErrorMessage = 'Network response failed.';
-        const contentDivId = 'content-panel';
-        const errorMessage = 'Error loading content: ';
-        const navContainer = 'region-nav';
+    <script>// attributionsrc="https://github.com/joelevi/async-content-panel-loader">
+    const loadingMessage = '<div class="spinner-border" style="width: 3rem; height: 3rem;" role="status"><span class="sr-only"></span></div>';
+    const failedMessage = 'Failed to load content: ';
+    const networkErrorMessage = 'Network response failed.';
+    const contentDivId = 'content-panel';
+    const errorMessage = 'Error loading content: ';
+    const navContainer = 'region-nav';
 
-        function handleLinkClick(event, link) {
-            event.preventDefault();
-            const page = new URL(link.href).searchParams.get('page');
-            // Remove 'active' class from all nav <li> elements
-            document.querySelectorAll('#' + navContainer + ' li').forEach(li => li.classList.remove('active'));
-            // Add 'active' class to the parent <li> of the clicked link
-            link.parentElement.classList.add('active');
-            // Load content
-            loadContent(page ? 'part-' + page + '.php' : 'part-default.php', contentDivId, page ? link.search : '?page=default');
+    function handleLinkClick(event, link) {
+        event.preventDefault();
+        const page = new URL(link.href).searchParams.get('page');
+        // Remove 'active' class from all nav <li> elements
+        document.querySelectorAll('#' + navContainer + ' li').forEach(li => li.classList.remove('active'));
+        // Add 'active' class to the parent <li> of the clicked link
+        link.parentElement.classList.add('active');
+        // Load content
+        loadContent(page ? page + '.php' : 'part-default.php', contentDivId, page ? link.search : '?page=default');
+    }
+
+    async function loadContent(destinationPage, targetDivId, newQueryString) {
+        // Show loading spinner before fetching
+
+       if (targetDivId) { 
+        if (document.getElementById(targetDivId)) {
+          document.getElementById(targetDivId).innerHTML = loadingMessage;
+          
+
+          try {
+              const response = await fetch(destinationPage);
+              if (!response.ok) {
+                  throw new Error(networkErrorMessage);
+              }
+              const htmlContent = await response.text();
+              document.getElementById(targetDivId).innerHTML = htmlContent;
+              // Update the URL using History API
+              if (newQueryString) {
+                  history.pushState({ page: destinationPage }, '', newQueryString);
+              }
+          } catch (error) {
+              console.error(errorMessage, error);
+              document.getElementById(targetDivId).innerHTML = failedMessage + error.message;
+          }
         }
+      }
+    }
 
-        async function loadContent(destinationPage, targetDivId, newQueryString) {
-            // Show loading spinner before fetching
-            document.getElementById(targetDivId).innerHTML = loadingMessage;
-            try {
-                const response = await fetch(destinationPage);
-                if (!response.ok) {
-                    throw new Error(networkErrorMessage);
-                }
-                const htmlContent = await response.text();
-                document.getElementById(targetDivId).innerHTML = htmlContent;
-                // Update the URL using History API
-                if (newQueryString) {
-                    history.pushState({ page: destinationPage }, '', newQueryString);
-                }
-            } catch (error) {
-                console.error(errorMessage, error);
-                document.getElementById(targetDivId).innerHTML = failedMessage + error.message;
-            }
+    // Handle initial page load and direct URL navigation
+    document.addEventListener('DOMContentLoaded', function() {
+        const params = new URLSearchParams(window.location.search);
+        const page = params.get('page');
+        // Update active class based on URL
+        document.querySelectorAll('#' + navContainer + ' a').forEach(a => {
+            const linkPage = new URL(a.href).searchParams.get('page');
+            a.parentElement.classList.toggle('active', linkPage === page || (!page && linkPage === 'default'));
+        });
+        
+        if (contentDivId) {
+          // Load content
+          if (page) {
+              loadContent(page + '.php', contentDivId, '?page=' + page);
+          } else {
+              loadContent('part-default.php', contentDivId, '?page=default');
+          }
         }
+    });
 
-        // Handle initial page load and direct URL navigation
-        document.addEventListener('DOMContentLoaded', function() {
-            const params = new URLSearchParams(window.location.search);
-            const page = params.get('page');
-            // Update active class based on URL
-            document.querySelectorAll('#' + navContainer + ' a').forEach(a => {
-                const linkPage = new URL(a.href).searchParams.get('page');
-                a.parentElement.classList.toggle('active', linkPage === page || (!page && linkPage === 'default'));
-            });
-            // Load content
-            if (page) {
-                loadContent('part-' + page + '.php', contentDivId, '?page=' + page);
-            } else {
-                loadContent('part-default.php', contentDivId, '?page=default');
-            }
+    // Handle back/forward navigation
+    window.addEventListener('popstate', function(event) {
+        const params = new URLSearchParams(window.location.search);
+        const page = params.get('page');
+        // Update active class based on URL
+        document.querySelectorAll('#' + navContainer + ' a').forEach(a => {
+            const linkPage = new URL(a.href).searchParams.get('page');
+            a.parentElement.classList.toggle('active', linkPage === page || (!page && linkPage === 'default'));
         });
 
-        // Handle back/forward navigation
-        window.addEventListener('popstate', function(event) {
-            const params = new URLSearchParams(window.location.search);
-            const page = params.get('page');
-            // Update active class based on URL
-            document.querySelectorAll('#' + navContainer + ' a').forEach(a => {
-                const linkPage = new URL(a.href).searchParams.get('page');
-                a.parentElement.classList.toggle('active', linkPage === page || (!page && linkPage === 'default'));
-            });
-            // Load content
-            if (page) {
-                loadContent('part-' + page + '.php', contentDivId, '?page=' + page);
-            } else {
-                loadContent('part-default.php', contentDivId, '?page=default');
-            }
-        });
+        if (contentDivId) {
+          // Load content
+          if (page) {
+              loadContent(page + '.php', contentDivId, '?page=' + page);
+          } else {
+              loadContent('part-default.php', contentDivId, '?page=default');
+          }
+        }
+    });
     </script>
 </body>
 </html>
